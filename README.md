@@ -86,7 +86,7 @@ You shouldn't normally need to use this, since `rollback` or `commit` does it al
 nopg $tr exit
 ```
 
-...or, since $tr is just a pid:
+...or, since `$tr` is just a pid:
 
 ```bash
 kill $tr
