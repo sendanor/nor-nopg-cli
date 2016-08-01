@@ -42,7 +42,7 @@ module.exports = function(path) {
 						defer.reject(e);
 						return;
 					}
-				})
+				});
 			});
 
 			req.on('error', function(e) {

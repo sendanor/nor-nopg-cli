@@ -1,5 +1,6 @@
 "use strict";
 
+var debug = require('nor-debug');
 var is = require('nor-is');
 
 	var norUtils = {};
@@ -331,7 +332,7 @@ var is = require('nor-is');
 		}
 		var schema = this.getSchema();
 		if(schema) {
-			return tv4.validate(data, schema);
+			return require('tv4').validate(data, schema);
 		}
 	};
 
@@ -421,7 +422,7 @@ var is = require('nor-is');
 		}
 
 		if(!schema) {
-			$log.debug("schema does not exist");
+			debug.log("schema does not exist");
 			return;
 		}
 
@@ -482,9 +483,9 @@ var is = require('nor-is');
 
 		if(!path) { throw new TypeError("!path"); }
 		path = norUtils.parsePathArray(path);
-		//$log.debug("data = ", data);
-		//$log.debug("path = ", path);
-		//$log.debug("documents = ", documents);
+		//debug.log("data = ", data);
+		//debug.log("path = ", path);
+		//debug.log("documents = ", documents);
 
 		if(!data) {
 			return;
@@ -492,7 +493,7 @@ var is = require('nor-is');
 
 		// FIXME: Enable support for possible sub documents
 		if( documents && data.hasOwnProperty('$documents') ) {
-			$log.warn("Document had multiple $documents, only first one was used.");
+			debug.warn("Document had multiple $documents, only first one was used.");
 		}
 
 		if( (documents === undefined) && data && data.hasOwnProperty('$documents') ) {
@@ -501,7 +502,7 @@ var is = require('nor-is');
 
 		if(documents && (!norUtils.isObject(documents)) ) { throw new TypeError("documents not object!"); }
 
-		//$log.debug("documents = ", documents);
+		//debug.log("documents = ", documents);
 
 		if(path.length === 0) {
 			throw new TypeError("path is empty");
@@ -510,9 +511,9 @@ var is = require('nor-is');
 		var key = path[0];
 		var parent = data;
 		var value = parent[key];
-		//$log.debug("key = ", key);
-		//$log.debug("value = ", value);
-		//$log.debug("parent = ", parent);
+		//debug.log("key = ", key);
+		//debug.log("value = ", value);
+		//debug.log("parent = ", parent);
 
 		if(path.length === 1) {
 			if(!norUtils.isObject(parent)) { throw new TypeError("parent not object!"); }
@@ -524,9 +525,9 @@ var is = require('nor-is');
 			key = value;
 			parent = documents;
 			value = parent[key];
-			//$log.debug("key = ", key);
-			//$log.debug("value = ", value);
-			//$log.debug("parent = ", parent);
+			//debug.log("key = ", key);
+			//debug.log("value = ", value);
+			//debug.log("parent = ", parent);
 		}
 
 		if(path.length >= 2) {

@@ -7,6 +7,8 @@
     "nopg": "src/nopg.js"
   },
   "scripts": {
+    "lint": "node-lint src/ --config=lint.json",
+    "jshint": "jshint src/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,5 +29,9 @@
     "nor-array": "^1.0.0",
     "nor-is": "^1.0.0",
     "q": "^1.4.1"
+  },
+  "devDependencies":{
+    "jshint": "^2.9.2",
+    "lint": "^1.1.2"
   }
 }

@@ -165,7 +165,7 @@ _Q.fcall(function() {
 		}
 
 		if(is.obj(data)) {
-			var paths = norUtils.getPathsFromData(obj);
+			var paths = norUtils.getPathsFromData(data);
 			return paths.map(function(path) { return path.join('.'); });
 		}
 
@@ -197,15 +197,17 @@ _Q.fcall(function() {
 		return;
 	}
 
+	var keys;
+
 	if(is.array(results)) {
-		var keys = get_keys(results);
+		keys = get_keys(results);
 		display_keys(keys);
 		ARRAY(results).forEach(display_data.bind(undefined, keys));
 		return;
 	}
 
 	if(is.object(results)) {
-		var keys = get_keys(results);
+		keys = get_keys(results);
 		display_keys(keys);
 		display_data(results, keys);
 		return;

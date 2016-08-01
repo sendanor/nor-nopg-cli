@@ -2,12 +2,9 @@
 
 /** HTTP server in UNIX socket */
 
-var PGCONFIG = process.env.PGCONFIG;
-
 var debug = require('nor-debug');
 var http = require('http');
 var _Q = require('q');
-var nopg = require('nor-nopg');
 
 /** Parse HTTP input body */
 function parse_body(req) {

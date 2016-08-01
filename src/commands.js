@@ -103,7 +103,7 @@ commands.count = function(args) {
 	var where = args.where;
 	var traits = args.traits;
 	return db.count(type)(where, traits).then(function(db_) {
-		return db.fetch();
+		return db_.fetch();
 	});
 };
 
@@ -123,9 +123,9 @@ commands.create = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
 	var type = args._.shift();
 	var set = args.set;
-	var traits = args.traits;
-	return db.create(type)(set, traits).then(function(db_) {
-		return prepare_doc(db.fetch());
+	debug.assert(set).is('object');
+	return db.create(type)(set).then(function(db_) {
+		return prepare_doc(db_.fetch());
 	});
 };
 
