@@ -142,12 +142,12 @@ commands.update = function(args) {
 		return ARRAY(docs).map(function step_builder(doc) {
 			return function step() {
 				return db_.update(doc, set).then(function(doc_) {
-					results.push(doc_);
+					results.push(prepare_doc(doc_));
 				});
 			};
 		}).reduce(_Q.when, _Q());
 	}).then(function() {
-		return prepare_docs(results);
+		return results;
 	});
 };
 
