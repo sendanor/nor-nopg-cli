@@ -78,7 +78,7 @@ function parse_argv(argv) {
 		"where": where,
 		"set": set,
 		"traits": traits,
-		"pg": set,
+		"pg": pg,
 		"verbose": verbose
 	};
 }
