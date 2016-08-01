@@ -209,7 +209,7 @@ _Q.fcall(function() {
 	if(is.object(results)) {
 		keys = get_keys(results);
 		display_keys(keys);
-		display_data(results, keys);
+		display_data(keys, results);
 		return;
 	}
 
