@@ -141,7 +141,8 @@ commands.update = function(args) {
 		var docs = db.fetch();
 		return ARRAY(docs).map(function step_builder(doc) {
 			return function step() {
-				return db_.update(doc, set).then(function(doc_) {
+				return db_.update(doc, set).then(function(db__) {
+					var doc_ = db__.fetch();
 					results.push(prepare_doc(doc_));
 				});
 			};
