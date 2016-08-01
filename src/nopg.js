@@ -219,7 +219,11 @@ _Q.fcall(function() {
 	if(args.verbose) {
 		debug.error(err);
 	} else {
-		process.stderr.write('Error: ' + err + '\n');
+		var msg = ''+ (err && err.message) || (''+err);
+		if(msg === '[object Object]') {
+			msg = JSON.stringify(err, null, 2);
+		}
+		process.stderr.write('Error: ' + msg + '\n');
 	}
 	process.exit(1);
 }).done();
