@@ -16,8 +16,8 @@ module.exports = function(path) {
 				path: '/'+command,
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': postData.length
+					'Content-Type': 'application/json;charset=utf-8',
+					'Content-Length': Buffer.byteLength(postData, 'utf8')
 				}
 			};
 
@@ -50,7 +50,7 @@ module.exports = function(path) {
 			});
 
 			// write data to request body
-			req.write(postData);
+			req.write(postData, 'utf8');
 			req.end();
 
 			return defer.promise;

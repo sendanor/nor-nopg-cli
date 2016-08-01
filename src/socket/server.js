@@ -7,9 +7,24 @@ var http = require('http');
 var _Q = require('q');
 
 /** Parse HTTP input body */
-function parse_body(req) {
+function parse_body(req, res) {
 	return _Q.fcall(function() {
 		var defer = _Q.defer();
+
+		/*
+		var bodyParser = require('body-parser');
+		bodyParser.json()(req, null, function(err) {
+			if(err) {
+				debug.log('err = ', err);
+				defer.reject(err);
+				return;
+			}
+			debug.log('req.body = ', req.body);
+			defer.resolve(req.body);
+		});
+		*/
+
+		req.setEncoding('utf8');
 		var body = '';
 		if(req.method !== 'POST') {
 			return body;
@@ -29,6 +44,7 @@ function parse_body(req) {
 				defer.reject(e);
 			}
 		});
+
 		return defer.promise;
 	});
 }

@@ -1,6 +1,6 @@
 {
   "name": "nopg",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Shell scripting CLI for nopg",
   "main": "src/index.js",
   "bin": {
@@ -23,14 +23,14 @@
   "homepage": "https://github.com/sendanor/nor-nopg-cli#readme",
   "dependencies": {
     "minimist": "^1.2.0",
+    "nor-array": "^1.0.0",
     "nor-debug": "^1.0.0",
     "nor-fs": "^1.0.0",
-    "nor-nopg": "^1.0.1",
-    "nor-array": "^1.0.0",
     "nor-is": "^1.0.0",
+    "nor-nopg": "^1.0.1",
     "q": "^1.4.1"
   },
-  "devDependencies":{
+  "devDependencies": {
     "jshint": "^2.9.2",
     "lint": "^1.1.2"
   }
