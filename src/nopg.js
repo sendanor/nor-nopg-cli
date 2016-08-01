@@ -12,7 +12,7 @@ var uds_client = require('./socket/client.js');
 
 /** */
 function usage() {
-	console.log('USAGE: nopg COMMAND [ARG(s)] [OPT(s)]');
+	process.stderr.write('USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n');
 }
 
 /** Parse args */
@@ -96,7 +96,6 @@ function start_uds() {
 		var resolved = false;
 		var defer = _Q.defer();
 		child.once('exit', function() {
-			console.log('child exit');
 			if(resolved) { return; }
 			resolved = true;
 			defer.reject("unexpected UDS exit");
@@ -219,6 +218,6 @@ _Q.fcall(function() {
 	if(args.verbose) {
 		debug.error(err);
 	} else {
-		console.log('Error: ' + err);
+		process.stderr.write('Error: ' + err + '\n');
 	}
 }).done();
