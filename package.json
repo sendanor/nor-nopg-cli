@@ -1,0 +1,31 @@
+{
+  "name": "nopg",
+  "version": "0.1.0",
+  "description": "Shell scripting CLI for nopg",
+  "main": "src/index.js",
+  "bin": {
+    "nopg": "src/nopg.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sendanor/nor-nopg-cli.git"
+  },
+  "author": "Jaakko-Heikki Heusala <jheusala@iki.fi>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sendanor/nor-nopg-cli/issues"
+  },
+  "homepage": "https://github.com/sendanor/nor-nopg-cli#readme",
+  "dependencies": {
+    "minimist": "^1.2.0",
+    "nor-debug": "^1.0.0",
+    "nor-fs": "^1.0.0",
+    "nor-nopg": "^1.0.1",
+    "nor-array": "^1.0.0",
+    "nor-is": "^1.0.0",
+    "q": "^1.4.1"
+  }
+}
