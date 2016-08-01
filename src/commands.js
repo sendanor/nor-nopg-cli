@@ -165,6 +165,8 @@ commands.delete = function(args) {
 				return db_.del(doc);
 			};
 		}).reduce(_Q.when, _Q());
+	}).then(function() {
+		return;
 	});
 };
 
