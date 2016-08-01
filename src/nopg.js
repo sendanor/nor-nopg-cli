@@ -13,6 +13,7 @@ var uds_client = require('./socket/client.js');
 /** */
 function usage() {
 	process.stderr.write('USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n');
+	process.exit(1);
 }
 
 /** Parse args */
@@ -220,4 +221,5 @@ _Q.fcall(function() {
 	} else {
 		process.stderr.write('Error: ' + err + '\n');
 	}
+	process.exit(1);
 }).done();
