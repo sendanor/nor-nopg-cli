@@ -21,6 +21,17 @@
     "url": "https://github.com/sendanor/nor-nopg-cli/issues"
   },
   "homepage": "https://github.com/sendanor/nor-nopg-cli#readme",
+  "keywords": [
+    "nosql",
+    "nopg",
+    "postgresql",
+    "node",
+    "pg",
+    "client",
+    "cli",
+    "shell",
+    "bash"
+  ],
   "dependencies": {
     "minimist": "^1.2.0",
     "nor-array": "^1.0.0",
