@@ -1,5 +1,6 @@
 "use strict";
 
+var ARRAY = require('nor-array');
 var debug = require('nor-debug');
 var is = require('nor-is');
 
@@ -669,6 +670,34 @@ var is = require('nor-is');
 		});
 
 		return changed;
+	};
+
+	/** */
+	norUtils.getKeys = function get_keys(data) {
+
+		if(is.array(data)) {
+			var keys = [];
+			ARRAY(data).forEach(function(obj) {
+				var paths = norUtils.getPathsFromData(obj);
+				ARRAY(paths).map(function(path) {
+					return path.join('.');
+				}).forEach(function(key) {
+					if(keys.indexOf(key) >= 0) {
+						return;
+					}
+					keys.push(key);
+				});
+			});
+			return keys;
+		}
+
+		if(is.obj(data)) {
+			var paths = norUtils.getPathsFromData(data);
+			return paths.map(function(path) { return path.join('.'); });
+		}
+
+		throw new TypeError("data was wrong type: " + typeof data);
+
 	};
 
 	// Exports

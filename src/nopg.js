@@ -146,33 +146,6 @@ _Q.fcall(function() {
 
 }).then(function(results) {
 
-	function get_keys(data) {
-
-		if(is.array(data)) {
-			var keys = [];
-			ARRAY(data).forEach(function(obj) {
-				var paths = norUtils.getPathsFromData(obj);
-				ARRAY(paths).map(function(path) {
-					return path.join('.');
-				}).forEach(function(key) {
-					if(keys.indexOf(key) >= 0) {
-						return;
-					}
-					keys.push(key);
-				});
-			});
-			return keys;
-		}
-
-		if(is.obj(data)) {
-			var paths = norUtils.getPathsFromData(data);
-			return paths.map(function(path) { return path.join('.'); });
-		}
-
-		throw new TypeError("data was wrong type: " + typeof data);
-
-	}
-
 	function display_keys(keys) {
 		console.log( ARRAY(keys).map(function(key) {
 			return ''+key;
@@ -200,14 +173,14 @@ _Q.fcall(function() {
 	var keys;
 
 	if(is.array(results)) {
-		keys = get_keys(results);
+		keys = norUtils.getKeys(results);
 		display_keys(keys);
 		ARRAY(results).forEach(display_data.bind(undefined, keys));
 		return;
 	}
 
 	if(is.object(results)) {
-		keys = get_keys(results);
+		keys = norUtils.getKeys(results);
 		display_keys(keys);
 		display_data(keys, results);
 		return;
