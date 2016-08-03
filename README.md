@@ -13,19 +13,21 @@ Not well tested, but should work.
 ### Example
 
 ```bash
-#!/bin/bash -x
+#!/bin/bash
 set -e
-
-tr="$(nopg start)"
-
+tr=''
 function finish {
+	status="$?"
 	test -n "$tr" && nopg $tr rollback
+	exit "$status"
 }
 trap finish EXIT
+tr="$(nopg start)"
 
 nopg $tr search User
 nopg $tr commit
 tr=''
+exit 0
 ```
 
 ### Transactions
