@@ -18,14 +18,14 @@ set -e
 tr=''
 function finish {
 	status="$?"
-	test -n "$tr" && nopg $tr rollback
+	test -n "$tr" && nopg -b -q $tr rollback
 	exit "$status"
 }
 trap finish EXIT
-tr="$(nopg start)"
+tr="$(nopg -b -q start)"
 
-nopg $tr search User
-nopg $tr commit
+nopg -b -q $tr search User
+nopg -b -q $tr commit
 tr=''
 exit 0
 ```
@@ -35,7 +35,7 @@ exit 0
 Start a transaction:
 
 ```bash
-tr = "$(nopg start)"
+tr = "$(nopg -b -q start)"
 ```
 
 End a transaction successfully:
