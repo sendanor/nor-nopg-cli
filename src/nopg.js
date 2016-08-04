@@ -190,7 +190,7 @@ function parse_argv(argv, type_obj) {
 			command = _[0];
 			type = _[1];
 		}
-	} else if(_.length == 1) {
+	} else if(_.length === 1) {
 		if(commands_with_type.indexOf(_[0]) >= 0) {
 			command = _[0];
 		}

@@ -1,6 +1,8 @@
 "use strict";
 
+var is = require('nor-is');
 var debug = require('nor-debug');
+var merge = require('merge');
 var nopg = require('nor-nopg');
 var ARRAY = require('nor-array');
 var _Q = require('q');
@@ -166,7 +168,22 @@ commands.update = function(args) {
 		var docs = db.fetch();
 		return ARRAY(docs).map(function step_builder(doc) {
 			return function step() {
-					return db_.update(doc, set).then(function(db__) {
+
+				// If doc already has some of the properties of set's object properties, we must merge them, so we don't lose data.
+				ARRAY(Object.keys(set)).forEach(function(key) {
+					if(!doc.hasOwnProperty(key)) {
+						return;
+					}
+					if(!is.obj(doc[key])) {
+						return;
+					}
+					if(!is.obj(set[key])) {
+						return;
+					}
+					set[key] = merge({}, doc[key], set[key]);
+				});
+
+				return db_.update(doc, set).then(function(db__) {
 					var doc_ = db__.fetch();
 					results.push(prepare_doc(doc_));
 				});
