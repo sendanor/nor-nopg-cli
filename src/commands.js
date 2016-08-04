@@ -99,6 +99,7 @@ commands.rollback = function() {
 /** Count documents */
 commands.count = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
 	var traits = args.traits;
@@ -107,9 +108,31 @@ commands.count = function(args) {
 	});
 };
 
+/** Search document types */
+commands.types = function(args) {
+	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
+	var where = args.where;
+	var traits = args.traits;
+	return db.searchTypes(where, traits).then(function(db_) {
+		return prepare_types(db_.fetch());
+	});
+};
+
+/** Get document type */
+commands.type = function(args) {
+	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
+	var type = args._.shift();
+	return db.getType(type).then(function(db_) {
+		return prepare_type(db_.fetch());
+	});
+};
+
 /** Search documents */
 commands.search = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
 	var traits = args.traits;
@@ -121,6 +144,7 @@ commands.search = function(args) {
 /** Create document */
 commands.create = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
 	var type = args._.shift();
 	var set = args.set;
 	debug.assert(set).is('object');
@@ -132,6 +156,7 @@ commands.create = function(args) {
 /** Update document(s) */
 commands.update = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
 	var set = args.set;
@@ -141,7 +166,7 @@ commands.update = function(args) {
 		var docs = db.fetch();
 		return ARRAY(docs).map(function step_builder(doc) {
 			return function step() {
-				return db_.update(doc, set).then(function(db__) {
+					return db_.update(doc, set).then(function(db__) {
 					var doc_ = db__.fetch();
 					results.push(prepare_doc(doc_));
 				});
@@ -155,6 +180,7 @@ commands.update = function(args) {
 /** Delete document(s) */
 commands.delete = function(args) {
 	if(!db) { throw new TypeError("transaction not started"); }
+	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
 	var traits = args.traits;

@@ -12,7 +12,36 @@ var uds_client = require('./socket/client.js');
 
 /** */
 function usage() {
-	process.stderr.write('USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n');
+	process.stderr.write(
+		'USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n'+
+		' where COMMAND is one of:\n'+
+		'   start            -- Start backend and create transaction\n'+
+		'   TR commit        -- Commit transaction, close backend\n'+
+		'   TR rollback      -- Rollback transaction, close backend\n'+
+		'   TR exit          -- Close backend\n'+
+		'   TR types         -- Search types\n'+
+		'   TR type [TYPE]   -- Get type\n'+
+		'   TR search [TYPE] -- Search document(s)\n'+
+		'   TR delete [TYPE] -- Delete document(s)\n'+
+		'   TR update [TYPE] -- Update document(s)\n'+
+		'   TR create [TYPE] -- Create document(s)\n'+
+		' where TR is PID of daemon handling the transaction\n'+
+		' where ARG(s) are one of:\n'+
+		'   TYPE                   -- Document type name\n'+
+		' where OPT(s) are one of:\n'+
+		'   --where-KEY=VALUE      -- Search by these values (for types, search, update, delete)\n'+
+		'   --set-KEY=VALUE        -- Set new values (for update, create)\n'+
+		'   --traits-KEY=VALUE     -- Set additional options for operations\n'+
+		'   --traits-fields=FIELDS -- Fields in result as comma seperated list\n'+
+		'   --traits-limit=NUM     -- Limit results by NUM rows\n'+
+		'   --traits-offset=NUM    -- Offset results by NUM rows\n'+
+		'   --verbose  -v          -- Set verbose mode\n'+
+		'   --quiet    -q          -- Set quiet mode, no headers\n'+
+		'   --batch    -b          -- Set batch mode, no human readable tables\n'+
+		'   --pgconfig=CONFIG      -- Set Postgresql settings\n'+
+		'   --pg=CONFIG            -- Set Postgresql settings\n'+
+		'\n'
+	);
 	process.exit(1);
 }
 
@@ -22,6 +51,8 @@ function parse_argv(argv) {
 	var pids = [];
 	var _ = [];
 	var verbose = false;
+	var quiet = false;
+	var batch = false;
 	var where;
 	var set;
 	var pg = process.env.PGCONFIG;
@@ -69,6 +100,20 @@ function parse_argv(argv) {
 			return;
 		}
 
+		if((key === 'q') || (key === 'quiet')) {
+			if(argv[key]) {
+				quiet = true;
+			}
+			return;
+		}
+
+		if((key === 'b') || (key === 'batch')) {
+			if(argv[key]) {
+				batch = true;
+			}
+			return;
+		}
+
 		throw new TypeError("Unknown argument: " + key);
 	});
 
@@ -79,7 +124,9 @@ function parse_argv(argv) {
 		"set": set,
 		"traits": traits,
 		"pg": pg,
-		"verbose": verbose
+		"verbose": verbose,
+		"quiet": quiet,
+		"batch": batch
 	};
 }
 
@@ -113,10 +160,11 @@ function start_uds() {
 
 // 
 var command;
-var argv = require('minimist')(process.argv.slice(2), {
-	'boolean': ['v', 'verbose'],
+var minimist_opts = {
+	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch'],
 	'string': ['pg', 'pgconfig']
-});
+};
+var argv = require('minimist')(process.argv.slice(2), minimist_opts);
 var args = parse_argv(argv);
 if(args.verbose) {
 	debug.log("argv = ", argv);
@@ -146,13 +194,17 @@ _Q.fcall(function() {
 
 }).then(function(results) {
 
-	function display_keys(keys) {
-		console.log( ARRAY(keys).map(function(key) {
+	function get_keys(keys) {
+		return ARRAY(keys).map(function(key) {
 			return ''+key;
-		}).join('\t') );
+		}).valueOf();
 	}
 
-	function display_data(keys, obj) {
+	function display_keys(keys) {
+		console.log( get_keys(keys).join('\t') );
+	}
+
+	function get_data(keys, obj) {
 		var result = {};
 		var paths = norUtils.getPathsFromData(obj);
 		ARRAY(paths).forEach(function(path) {
@@ -161,32 +213,124 @@ _Q.fcall(function() {
 			result[key] = value;
 		});
 
-		console.log( ARRAY(keys).map(function(key) {
+		return ARRAY(keys).map(function(key) {
 			return ''+result[key];
-		}).join('\t') );
+		}).valueOf();
+	}
+
+	function display_data(keys, obj) {
+		console.log( get_data(keys, obj).join('\t') );
+	}
+
+	function display_batch(results) {
+		var keys;
+		if(is.array(results)) {
+			keys = norUtils.getKeys(results);
+			if(!args.quiet) {
+				display_keys(keys);
+			}
+			ARRAY(results).forEach(display_data.bind(undefined, keys));
+			return;
+		}
+
+		if(is.object(results)) {
+			keys = norUtils.getKeys(results);
+			if(!args.quiet) {
+				display_keys(keys);
+			}
+			display_data(keys, results);
+			return;
+		}
+
+		console.dir(results);
+
+	}
+
+	function display_table(results) {
+		var Table = require('cli-table');
+		var keys, table;
+
+		var chars = {
+			'top': '-',
+			'top-mid': '+',
+			'top-left': '+',
+			'top-right': '+',
+			'bottom': '-',
+			'bottom-mid': '+',
+			'bottom-left': '+',
+			'bottom-right': '+',
+			'left': '|',
+			'left-mid': '+',
+			'mid': '-',
+			'mid-mid': '+',
+			'right': '|',
+			'right-mid': '+',
+			'middle': '|'
+		};
+
+		if(is.array(results)) {
+			keys = norUtils.getKeys(results);
+			keys = get_keys(keys);
+			debug.assert(keys).is('array');
+			//debug.log('keys = ', keys);
+
+			// instantiate
+			table = new Table({
+				head: keys,
+				'chars': chars
+			});
+
+			// table is an Array, so you can `push`, `unshift`, `splice` and friends
+			ARRAY(results).forEach(function(result) {
+				var values = get_data(keys, result);
+				//debug.log('values = ', values);
+				debug.assert(values).is('array');
+				table.push(values);
+			});
+
+			console.log(table.toString());
+			return;
+		}
+
+		if(is.object(results)) {
+			keys = norUtils.getKeys(results);
+			keys = get_keys(keys);
+			debug.assert(keys).is('array');
+			//debug.log('keys = ', keys);
+			var values = get_data(keys, results);
+			//debug.log('values = ', values);
+			debug.assert(values).is('array');
+			table = new Table({
+				'chars': chars
+			});
+
+			ARRAY(keys).forEach(function(key, index) {
+				var value = ''+values[index];
+				var tmp = {};
+				tmp[key] = value;
+				table.push(tmp);
+			});
+
+			console.log(table.toString());
+			return;
+		}
+
+		// Other? Fallback to batch mode
+		display_batch(results);
 	}
 
 	if(results === undefined) {
+		if(args.verbose) {
+			debug.log('results was undefined');
+		}
 		return;
 	}
 
-	var keys;
-
-	if(is.array(results)) {
-		keys = norUtils.getKeys(results);
-		display_keys(keys);
-		ARRAY(results).forEach(display_data.bind(undefined, keys));
-		return;
+	if(args.batch) {
+		display_batch(results);
+	} else {
+		display_table(results);
 	}
-
-	if(is.object(results)) {
-		keys = norUtils.getKeys(results);
-		display_keys(keys);
-		display_data(keys, results);
-		return;
-	}
-
-	console.dir(results);
 
 }).fail(function(err) {
 	if(args.verbose) {

@@ -32,6 +32,9 @@
     "shell",
     "bash"
   ],
+  "optionalDependencies": {
+    "cli-table": "^0.3.1"
+  },
   "dependencies": {
     "minimist": "^1.2.0",
     "nor-array": "^1.0.0",
