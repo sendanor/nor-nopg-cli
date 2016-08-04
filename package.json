@@ -1,6 +1,6 @@
 {
   "name": "nopg",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Shell scripting CLI for nopg",
   "main": "src/index.js",
   "bin": {
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "merge": "^1.2.0",
-    "sendanor/nor-minimist": "^1.2.0",
+    "nor-minimist": "sendanor/nor-minimist",
     "nor-array": "^1.0.0",
     "nor-debug": "^1.0.0",
     "nor-fs": "^1.0.0",
