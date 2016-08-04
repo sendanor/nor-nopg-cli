@@ -3,12 +3,22 @@
 
 var _Q = require('q');
 var debug = require('nor-debug');
+var merge = require('merge');
 var ARRAY = require('nor-array');
 var norUtils = require('./norUtils.js');
 var PATH = require('path');
 var is = require('nor-is');
 var common = require('./socket/common.js');
 var uds_client = require('./socket/client.js');
+
+/** {array} of commands which have the optional type name */
+var commands_with_type = [
+	'type',
+	'search',
+	'delete',
+	'update',
+	'create'
+];
 
 /** */
 function usage() {
@@ -40,19 +50,71 @@ function usage() {
 		'   --batch    -b          -- Set batch mode, no human readable tables\n'+
 		'   --pgconfig=CONFIG      -- Set Postgresql settings\n'+
 		'   --pg=CONFIG            -- Set Postgresql settings\n'+
+		'   --array-fs=FS          -- Sets the field separator for input arrays, default value ","\n'+
 		'\n'
 	);
 	process.exit(1);
 }
 
+/** Set property recursively
+ * @param obj {object} The object where to set a property
+ * @param keys {string|array} Array of property names, or a string.
+ * @param value {any} The value which to set the property
+ */
+function set_property(obj, keys, value) {
+	debug.assert(obj).is('object');
+	if(is.string(keys)) {
+		keys = keys.split('.');
+	}
+	debug.assert(keys).is('array').minLength(1);
+	keys = [].concat(keys);
+
+	if(keys.length === 1) {
+		obj[keys.shift()] = value;
+		return;
+	}
+
+	var key = keys.shift();
+	if(!obj.hasOwnProperty(key)) {
+		obj[key] = {};
+	}
+	return set_property(obj[key], keys, value);
+}
+
+/** Unflatten object */
+function unflatten(obj, type_obj) {
+	if(!obj) {
+		return obj;
+	}
+	if(!type_obj) {
+		return obj;
+	}
+	debug.log('obj = ', obj);
+	debug.log('type_obj = ', type_obj);
+
+	debug.assert(obj).is('object');
+	debug.assert(type_obj).is('object');
+
+	var tmp = {};
+	ARRAY(Object.keys(obj)).forEach(function(key) {
+		var value = obj[key];
+		key = key.replace(/\-/g, ".");
+		debug.log('key = ', key);
+		set_property(tmp, key, value);
+	});
+	debug.log('tmp = ', tmp);
+	return tmp;
+}
+
 /** Parse args */
-function parse_argv(argv) {
+function parse_argv(argv, type_obj) {
 
 	var pids = [];
 	var _ = [];
 	var verbose = false;
 	var quiet = false;
 	var batch = false;
+	var array_fs;
 	var where;
 	var set;
 	var pg = process.env.PGCONFIG;
@@ -89,7 +151,12 @@ function parse_argv(argv) {
 		}
 
 		if( (key === 'pg') || (key === 'pgconfig') ) {
-			pg = argv.pg;
+			pg = argv.pg || argv.pgconfig;
+			return;
+		}
+
+		if( key === 'array-fs' ) {
+			array_fs = argv['array-fs'];
 			return;
 		}
 
@@ -117,16 +184,31 @@ function parse_argv(argv) {
 		throw new TypeError("Unknown argument: " + key);
 	});
 
+	var command, type;
+	if(_.length >= 2) {
+		if(commands_with_type.indexOf(_[0]) >= 0) {
+			command = _[0];
+			type = _[1];
+		}
+	} else if(_.length == 1) {
+		if(commands_with_type.indexOf(_[0]) >= 0) {
+			command = _[0];
+		}
+	}
+
 	return {
 		"pids": pids,
 		"_": _,
-		"where": where,
-		"set": set,
+		"where": unflatten(where, type_obj),
+		"set": unflatten(set, type_obj),
 		"traits": traits,
 		"pg": pg,
+		"array_fs": array_fs,
 		"verbose": verbose,
 		"quiet": quiet,
-		"batch": batch
+		"batch": batch,
+		"command": command,
+		"type": type
 	};
 }
 
@@ -162,22 +244,16 @@ function start_uds() {
 var command;
 var minimist_opts = {
 	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch'],
-	'string': ['pg', 'pgconfig']
-};
-var argv = require('minimist')(process.argv.slice(2), minimist_opts);
-var args = parse_argv(argv);
-if(args.verbose) {
-	debug.log("argv = ", argv);
-	debug.log("args = ", args);
-}
-_Q.fcall(function() {
-
-	command = args._.shift();
-	if(!command) { return usage(); }
-	if(args.verbose) {
-		debug.log('command = ', command);
+	'string': ['pg', 'pgconfig', 'array-fs'],
+	'default': {
+		'array-fs': ','
 	}
-
+};
+var argv = require('nor-minimist')(process.argv.slice(2), minimist_opts);
+var args = parse_argv(argv);
+var uds_path;
+var client;
+_Q.fcall(function() {
 	return _Q.fcall(function() {
 		var pid = args.pids.shift();
 		if(!pid) {
@@ -185,12 +261,131 @@ _Q.fcall(function() {
 		}
 		return pid;
 	}).then(function(pid) {
+		uds_path = common.getUDSPath(pid);
+		client = uds_client(uds_path);
+	});
+}).then(function() {
 
-		var uds_path = common.getUDSPath(pid);
-		var client = uds_client(uds_path);
-		return client(command, args);
+	if(!args.type) {
+		return;
+	}
+
+	return client("type", {
+		'_': [args.type]
+	}).then(function(type_obj) {
+		debug.log("type_obj: ", type_obj);
+
+		var paths = norUtils.getPathsFromType(type_obj);
+		var types = ARRAY(paths).map(function(path) {
+			var pointer = norUtils.getSchemaPointerFromPath(type_obj, path);
+			if(pointer) {
+				var schema = pointer.getSchema();
+				return (schema && schema.type) || 'string';
+			}
+		}).valueOf();
+		var keys = ARRAY(paths).map(function(path) {
+			return path.join('.');
+		}).valueOf();
+
+		debug.log('types = ', types);
+		debug.log('keys = ', keys);
+
+		var boolean_keys = keys.filter(function(key, index) {
+			return types[index] === "boolean";
+		});
+
+		function argumentize(key) {
+			return "" + key.replace(/\./g, "-");
+		}
+
+		function prefix_set(key) {
+			return "set-" + key;
+		}
+
+		function prefix_where(key) {
+			return "where-" + key;
+		}
+
+		boolean_keys = [].concat(
+			boolean_keys.map(argumentize).map(prefix_set)
+		).concat(
+			boolean_keys.map(argumentize).map(prefix_where)
+		).concat(
+			boolean_keys.map(prefix_set)
+		).concat(
+			boolean_keys.map(prefix_where)
+		);
+
+		var array_keys = keys.filter(function(key, index) {
+			return (types[index] === "array");
+		});
+
+		array_keys = [].concat(
+			array_keys.map(argumentize).map(prefix_set)
+		).concat(
+			array_keys.map(argumentize).map(prefix_where)
+		).concat(
+			array_keys.map(prefix_set)
+		).concat(
+			array_keys.map(prefix_where)
+		);
+
+		var string_keys = keys.filter(function(key, index) {
+			return (types[index] === "string") || (types[index] === "array");
+		});
+
+		string_keys = [].concat(
+			string_keys.map(argumentize).map(prefix_set)
+		).concat(
+			string_keys.map(argumentize).map(prefix_where)
+		).concat(
+			string_keys.map(prefix_set)
+		).concat(
+			string_keys.map(prefix_where)
+		);
+
+		var defaults = {};
+		//ARRAY(boolean_keys).forEach(function(key) {
+		//	defaults[key] = undefined;
+		//});
+
+		var opts = JSON.parse(JSON.stringify(minimist_opts));
+
+		opts.boolean = [].concat(opts.boolean).concat(boolean_keys);
+		opts.string = [].concat(opts.string).concat(string_keys);
+		opts.default = merge({}, opts.default, defaults);
+
+		debug.log('opts = ', opts);
+
+		argv = require('nor-minimist')(process.argv.slice(2), opts);
+
+		// Parse arrays in arguments
+		ARRAY(array_keys).forEach(function(key) {
+			if(!argv.hasOwnProperty(key)) {
+				return;
+			}
+			debug.log('argv['+key+'] = ', argv[key]);
+			argv[key] = (''+argv[key]).split(argv.array_fs||',');
+		});
+
+		// Parse 
+		args = parse_argv(argv, type_obj);
 
 	});
+
+}).then(function() {
+
+	if(args.verbose) {
+		debug.log("argv = ", argv);
+		debug.log("args = ", args);
+	}
+
+	command = args._.shift();
+	if(!command) { return usage(); }
+	if(args.verbose) {
+		debug.log('command = ', command);
+	}
+	return client(command, args);
 
 }).then(function(results) {
 
