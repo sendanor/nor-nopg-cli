@@ -89,8 +89,8 @@ function unflatten(obj, type_obj) {
 	if(!type_obj) {
 		return obj;
 	}
-	debug.log('obj = ', obj);
-	debug.log('type_obj = ', type_obj);
+	//debug.log('obj = ', obj);
+	//debug.log('type_obj = ', type_obj);
 
 	debug.assert(obj).is('object');
 	debug.assert(type_obj).is('object');
@@ -99,10 +99,10 @@ function unflatten(obj, type_obj) {
 	ARRAY(Object.keys(obj)).forEach(function(key) {
 		var value = obj[key];
 		key = key.replace(/\-/g, ".");
-		debug.log('key = ', key);
+		//debug.log('key = ', key);
 		set_property(tmp, key, value);
 	});
-	debug.log('tmp = ', tmp);
+	//debug.log('tmp = ', tmp);
 	return tmp;
 }
 
@@ -273,7 +273,7 @@ _Q.fcall(function() {
 	return client("type", {
 		'_': [args.type]
 	}).then(function(type_obj) {
-		debug.log("type_obj: ", type_obj);
+		//debug.log("type_obj: ", type_obj);
 
 		var paths = norUtils.getPathsFromType(type_obj);
 		var types = ARRAY(paths).map(function(path) {
@@ -287,8 +287,8 @@ _Q.fcall(function() {
 			return path.join('.');
 		}).valueOf();
 
-		debug.log('types = ', types);
-		debug.log('keys = ', keys);
+		//debug.log('types = ', types);
+		//debug.log('keys = ', keys);
 
 		var boolean_keys = keys.filter(function(key, index) {
 			return types[index] === "boolean";
@@ -355,7 +355,7 @@ _Q.fcall(function() {
 		opts.string = [].concat(opts.string).concat(string_keys);
 		opts.default = merge({}, opts.default, defaults);
 
-		debug.log('opts = ', opts);
+		//debug.log('opts = ', opts);
 
 		argv = require('nor-minimist')(process.argv.slice(2), opts);
 
@@ -364,7 +364,7 @@ _Q.fcall(function() {
 			if(!argv.hasOwnProperty(key)) {
 				return;
 			}
-			debug.log('argv['+key+'] = ', argv[key]);
+			//debug.log('argv['+key+'] = ', argv[key]);
 			argv[key] = (''+argv[key]).split(argv.array_fs||',');
 		});
 
