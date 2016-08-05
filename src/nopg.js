@@ -49,9 +49,20 @@ function usage() {
 		'   --verbose  -v          -- Set verbose mode\n'+
 		'   --quiet    -q          -- Set quiet mode, no headers\n'+
 		'   --batch    -b          -- Set batch mode, no human readable tables\n'+
+		'   --timeout=NUM          -- Set timeout as NUM milliseconds until automatic rollback\n'+
+		'   --no-timeout           -- Disable timeout\n'+
 		'   --pgconfig=CONFIG      -- Set Postgresql settings\n'+
 		'   --pg=CONFIG            -- Set Postgresql settings\n'+
 		'   --array-fs=FS          -- Sets the field separator for input arrays, default value ","\n'+
+		' you can also use one of these ENVs:\n'+
+		'   NOPG_TIMEOUT         -- Default timeout in milliseconds for automatic rollback of transactions. Disable with 0, which is also default.\n'+
+		'   PGCONFIG             -- The PostgreSQL configuration, eg. "postgres://user:secret@localhost/dbname".\n'+
+		'   HOME                 -- User home directory, where .nopg directory for UNIX sockets is located.\n'+
+		'   NEW_RELIC_ENABLED    -- Optional support for NewRelic\n'+
+		'   NOPG_EVENT_TIMES     -- If enabled, will output statistics on operations.\n'+
+		'   DEBUG_NOPG           -- If enabled, additional debug information will be printed.\n'+
+		'   NOPG_TYPE_AWARENESS  -- If enabled, objects will automatically expand other types if necessary information is provided.\n'+
+		'   NOR_PG_POOL_SIZE     -- How many connections to maintain in a pool to the server. Defaults to 10.\n'+
 		'\n'
 	);
 	process.exit(1);
@@ -119,6 +130,7 @@ function parse_argv(argv, type_obj) {
 	var verbose = false;
 	var quiet = false;
 	var batch = false;
+	var timeout = process.env.NOPG_TIMEOUT || undefined;
 	var array_fs;
 	var where;
 	var set;
@@ -186,6 +198,16 @@ function parse_argv(argv, type_obj) {
 			return;
 		}
 
+		if(key === 'no-timeout') {
+			timeout = undefined;
+			return;
+		}
+
+		if(key === 'timeout') {
+			timeout = argv[key];
+			return;
+		}
+
 		throw new TypeError("Unknown argument: " + key);
 	});
 
@@ -210,6 +232,7 @@ function parse_argv(argv, type_obj) {
 		"pg": pg,
 		"array_fs": array_fs,
 		"verbose": verbose,
+		"timeout": timeout,
 		"quiet": quiet,
 		"batch": batch,
 		"command": command,
@@ -248,7 +271,7 @@ function start_uds() {
 // 
 var command;
 var minimist_opts = {
-	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch'],
+	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch', 'no-timeout', 'help'],
 	'string': ['pg', 'pgconfig', 'array-fs'],
 	'default': {
 		'array-fs': ','

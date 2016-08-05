@@ -71,8 +71,16 @@ var commands = module.exports = {};
 /** Start transaction */
 commands.start = function(args) {
 	if(db) { throw new TypeError("transaction started already"); }
-	return nopg.start(args.pg).then(function(db_) {
+	var traits = {};
+	if(args.traits) {
+		traits = merge({}, args.traits);
+	}
+	traits.timeout = parseInt(args.timeout || traits.timeout || 0, 10) || undefined;
+	return nopg.start(args.pg, traits).then(function(db_) {
 		db = globals.db = db_;
+		db.once('timeout', function() {
+			return commands.exit();
+		});
 		return process.pid;
 	});
 };
