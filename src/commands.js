@@ -7,8 +7,9 @@ var nopg = require('nor-nopg');
 var ARRAY = require('nor-array');
 var _Q = require('q');
 
-/** Increase default transaction timeout to 60 minutes */
-nopg.defaults.timeout = 3600*1000;
+/* Disables the default transaction timeout of 30 seconds */
+var NOPG_TIMEOUT = process.env.NOPG_TIMEOUT || '0';
+nopg.defaults.timeout = parseInt(NOPG_TIMEOUT, 10) || undefined;
 
 var globals = require('./globals.js');
 

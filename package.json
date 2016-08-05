@@ -1,6 +1,6 @@
 {
   "name": "nopg",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "Shell scripting CLI for nopg",
   "main": "src/index.js",
   "bin": {
