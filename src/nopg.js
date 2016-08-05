@@ -21,6 +21,20 @@ var commands_with_type = [
 ];
 
 /** */
+function version(args) {
+	var pjson = require('../package.json');
+	process.stdout.write(pjson.name + ' v' + pjson.version + '\n');
+	if(args && args.verbose) {
+		var nopg_info = require('nor-nopg/package.json');
+		process.stdout.write(
+			'node.js ' + process.version + '\n' +
+			'nor-nopg v' + nopg_info.version + '\n'
+		);
+	}
+	process.exit(0);
+}
+
+/** */
 function usage() {
 	process.stderr.write(
 		'USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n'+
@@ -40,6 +54,7 @@ function usage() {
 		'   TYPE                   -- Document type name\n'+
 		' where OPT(s) are one of:\n'+
 		'   --help                 -- This help\n'+
+		'   --version              -- Output version information\n'+
 		'   --where-KEY=VALUE      -- Search by these values (for types, search, update, delete)\n'+
 		'   --set-KEY=VALUE        -- Set new values (for update, create)\n'+
 		'   --traits-KEY=VALUE     -- Set additional options for operations\n'+
@@ -123,6 +138,10 @@ function parse_argv(argv, type_obj) {
 
 	if(argv.help) {
 		usage();
+	}
+
+	if(argv.version) {
+		version(argv);
 	}
 
 	var pids = [];
@@ -271,7 +290,7 @@ function start_uds() {
 // 
 var command;
 var minimist_opts = {
-	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch', 'no-timeout', 'help'],
+	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch', 'no-timeout', 'help', 'version'],
 	'string': ['pg', 'pgconfig', 'array-fs'],
 	'default': {
 		'array-fs': ','
