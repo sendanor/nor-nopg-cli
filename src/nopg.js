@@ -39,6 +39,7 @@ function usage() {
 		' where ARG(s) are one of:\n'+
 		'   TYPE                   -- Document type name\n'+
 		' where OPT(s) are one of:\n'+
+		'   --help                 -- This help\n'+
 		'   --where-KEY=VALUE      -- Search by these values (for types, search, update, delete)\n'+
 		'   --set-KEY=VALUE        -- Set new values (for update, create)\n'+
 		'   --traits-KEY=VALUE     -- Set additional options for operations\n'+
@@ -108,6 +109,10 @@ function unflatten(obj, type_obj) {
 
 /** Parse args */
 function parse_argv(argv, type_obj) {
+
+	if(argv.help) {
+		usage();
+	}
 
 	var pids = [];
 	var _ = [];
