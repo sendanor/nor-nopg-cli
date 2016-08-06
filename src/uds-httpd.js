@@ -36,4 +36,6 @@ fs.mkdirIfMissing(socket_dir).then(function() {
 	process.on('SIGTERM', cleanup);
 	server.once('close', cleanup);
 
+	console.log(process.pid);
+
 });

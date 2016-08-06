@@ -77,6 +77,8 @@ commands.start = function(args) {
 	}
 	traits.timeout = parseInt(args.timeout || traits.timeout || 0, 10) || undefined;
 	return nopg.start(args.pg, traits).then(function(db_) {
+		debug.assert(db_).is('object');
+		debug.assert(db_.once).is('function');
 		db = globals.db = db_;
 		db.once('timeout', function() {
 			return commands.exit();
@@ -147,6 +149,11 @@ commands.search = function(args) {
 	var type = args._.shift();
 	var where = args.where;
 	var traits = args.traits;
+	debug.log(
+		'type = ', type, '\n',
+		'where = ', where, '\n',
+		'traits = ', traits
+	);
 	return db.search(type)(where, traits).then(function(db_) {
 		return prepare_docs(db_.fetch());
 	});

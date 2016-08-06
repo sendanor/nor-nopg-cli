@@ -423,8 +423,10 @@ _Q.fcall(function() {
 }).then(function() {
 
 	if(args.verbose) {
-		debug.log("argv = ", argv);
-		debug.log("args = ", args);
+		debug.log(
+			"argv = ", argv, '\n', 
+			"args = ", args
+		);
 	}
 
 	command = args._.shift();
@@ -435,6 +437,10 @@ _Q.fcall(function() {
 	return client(command, args);
 
 }).then(function(results) {
+
+	if(args.verbose) {
+		debug.log('results = ', results);
+	}
 
 	function get_keys(keys) {
 		return ARRAY(keys).map(function(key) {
