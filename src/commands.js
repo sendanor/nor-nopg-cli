@@ -13,6 +13,12 @@ nopg.defaults.timeout = parseInt(NOPG_TIMEOUT, 10) || undefined;
 
 var globals = require('./globals.js');
 
+/** Last listener ID */
+var last_listener_id = 0;
+
+/** Listeners are saved here */
+var listeners = {};
+
 /** Prepare types for publification */
 function prepare_type(type) {
 	var tmp = JSON.parse(JSON.stringify(type));
@@ -62,21 +68,24 @@ function prepare_docs(docs) {
 	return ARRAY(docs).map(prepare_doc).valueOf();
 }
 
-/** Current transaction */
+/** Current connection */
 var db;
+
+/** Are we in a transaction? */
+var is_transaction;
 
 /** Actual command implementations */
 var commands = module.exports = {};
 
-/** Start transaction */
-commands.start = function(args) {
-	if(db) { throw new TypeError("transaction started already"); }
+/** Connect */
+commands.connect = function(args) {
+	if(db) { throw new TypeError("connection started already"); }
 	var traits = {};
 	if(args.traits) {
 		traits = merge({}, args.traits);
 	}
 	traits.timeout = parseInt(args.timeout || traits.timeout || 0, 10) || undefined;
-	return nopg.start(args.pg, traits).then(function(db_) {
+	return nopg.connect(args.pg, traits).then(function(db_) {
 		debug.assert(db_).is('object');
 		debug.assert(db_.once).is('function');
 		db = globals.db = db_;
@@ -87,9 +96,29 @@ commands.start = function(args) {
 	});
 };
 
+/** Start transaction */
+commands.start = function(args) {
+	if(db) { throw new TypeError("connection started already"); }
+	var traits = {};
+	if(args.traits) {
+		traits = merge({}, args.traits);
+	}
+	traits.timeout = parseInt(args.timeout || traits.timeout || 0, 10) || undefined;
+	return nopg.start(args.pg, traits).then(function(db_) {
+		debug.assert(db_).is('object');
+		debug.assert(db_.once).is('function');
+		is_transaction = true;
+		db = globals.db = db_;
+		db.once('timeout', function() {
+			return commands.exit();
+		});
+		return process.pid;
+	});
+};
+
 /** Commit transaction */
 commands.commit = function() {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	return db.commit().then(function() {
 		db = globals.db = undefined;
 		if(globals.server) {
@@ -100,7 +129,7 @@ commands.commit = function() {
 
 /** Rollback transaction */
 commands.rollback = function() {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	return db.rollback().then(function() {
 		db = undefined;
 		if(globals.server) {
@@ -111,7 +140,7 @@ commands.rollback = function() {
 
 /** Count documents */
 commands.count = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
@@ -123,7 +152,7 @@ commands.count = function(args) {
 
 /** Search document types */
 commands.types = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var where = args.where;
 	var traits = args.traits;
@@ -134,7 +163,7 @@ commands.types = function(args) {
 
 /** Get document type */
 commands.type = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	return db.getType(type).then(function(db_) {
@@ -144,7 +173,7 @@ commands.type = function(args) {
 
 /** Search documents */
 commands.search = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
@@ -161,7 +190,7 @@ commands.search = function(args) {
 
 /** Create document */
 commands.create = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	var set = args.set;
@@ -173,7 +202,7 @@ commands.create = function(args) {
 
 /** Update document(s) */
 commands.update = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
@@ -212,7 +241,7 @@ commands.update = function(args) {
 
 /** Delete document(s) */
 commands.delete = function(args) {
-	if(!db) { throw new TypeError("transaction not started"); }
+	if(!db) { throw new TypeError("connection not started"); }
 	debug.assert(args).is('object');
 	var type = args._.shift();
 	var where = args.where;
@@ -234,4 +263,96 @@ commands.exit = function() {
 	if(globals.server) {
 		globals.server.close();
 	}
+};
+
+var spawn = require('child_process').spawn;
+
+/** Returns a listener function */
+function build_listener(command, args) {
+	return function listener(id, event, type) {
+		_Q.fcall(function() {
+			var env = {
+				'NOPG_TR': process.pid,
+				'NOPG_EVENT_ID': id,
+				'NOPG_EVENT_NAME': event,
+				'NOPG_EVENT_TYPE': type
+			};
+			var cmd = spawn(command, args, {
+				env: merge({}, process.env, env),
+				'stdio': ['ignore', process.stdout, process.stderr]
+			});
+			cmd.on('close', function(code) {
+				if(code !== 0) {
+					debug.error("child process ", command, " for ", event, " exited with code ", code);
+				}
+			});
+		}).fail(function(err) {
+			debug.error('Error: ', err);
+		}).done();
+	};
+}
+
+/** On */
+commands.on = function(args) {
+	if(!db) { throw new TypeError("connection not started"); }
+
+	if(is_transaction) {
+		throw new TypeError("listening events are disabled inside of a transaction!");
+	}
+
+	debug.assert(args).is('object');
+	var event = args._.shift();
+	var command = args._.shift();
+	var command_args = args._;
+
+	last_listener_id += 1;
+	var listener_id = last_listener_id;
+	var listener = build_listener(command, command_args);
+	listeners[listener_id] = {'event': event, 'listener': listener};
+	return db.on(event, listener).then(function() {
+		return process.pid + '@' + listener_id;
+	});
+};
+
+/** Once */
+commands.once = function(args) {
+	if(!db) { throw new TypeError("connection not started"); }
+
+	if(is_transaction) {
+		throw new TypeError("listening events are disabled inside of a transaction!");
+	}
+
+	debug.assert(args).is('object');
+	var event = args._.shift();
+	var command = args._.shift();
+	var command_args = args._;
+
+	last_listener_id += 1;
+	var listener_id = last_listener_id;
+	var listener = build_listener(command, command_args);
+	listeners[listener_id] = {'event': event, 'listener': listener};
+	return db.once(event, listener).then(function() {
+		return process.pid + '@' + listener_id;
+	});
+};
+
+/** removeListener */
+commands.stop = function(args) {
+	if(!db) { throw new TypeError("connection not started"); }
+
+	if(is_transaction) {
+		throw new TypeError("listening events are disabled inside of a transaction!");
+	}
+
+	debug.assert(args).is('object');
+	var parts = args._.shift().split('@');
+	var listener_pid = parts.shift();
+	if(listener_pid !== process.pid) {
+		throw new TypeError("Not my listener!");
+	}
+	var listener_id = parts.shift();
+	var listener = listeners[listener_id];
+	return db.removeListener(listener.event, listener.listener).then(function() {
+		return;
+	});
 };

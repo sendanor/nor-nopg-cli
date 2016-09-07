@@ -361,16 +361,32 @@ var is = require('nor-is');
 
 	/** Returns an array of paths to each non-object data in a NoPg type object
 	 * @param type {object} The NoPG type object
+	 * @param methods {array} Methods for this type
 	 * @returns {array} Array of paths. Each path is also an array with each property as a string.
 	 */
-	norUtils.getPathsFromType = function norUtils_getPathsFromType(type) {
+	norUtils.getPathsFromType = function norUtils_getPathsFromType(type, methods) {
+		if(type && type.content && type.methods) {
+			methods = type.methods;
+			type = type.content;
+		}
+
+		if(methods && methods.content) {
+			methods = methods.content;
+		}
+
 		if(!type) { throw new TypeError("!type"); }
+		if(!methods) { throw new TypeError("!methods"); }
+		debug.assert(type).is('object');
+		debug.assert(methods).is('array');
 
 		// Default expected columns
 		var columns = [['$id'], ['$created'], ['$modified']];
 		if(type.$schema) {
 			columns = columns.concat(pathParsers.any(type.$schema, []));
 		}
+		methods.forEach(function(method) {
+			columns.push([method.$name]);
+		});
 		return columns;
 	};
 
@@ -555,6 +571,30 @@ var is = require('nor-is');
 	 * @returns {object} JSON Schema for this property
 	 */
 	norUtils.getTitleFromPath = function get_title_from_path(schema, path) {
+		var methods;
+
+		if(schema && schema.content && schema.methods) {
+			methods = schema.methods;
+			schema = schema.content;
+		}
+
+		if(methods && methods.content) {
+			methods = methods.content;
+		}
+
+		if(!path) { throw new TypeError("!path"); }
+		path = norUtils.parsePathArray(path);
+
+		if( methods && (path.length === 1)) {
+			var key = path.join('.');
+			var method = methods.filter(function(method) {
+				return method.$name === key;
+			}).shift();
+			if(method) {
+				return method.title;
+			}
+		}
+
 		var pointer = norUtils.getSchemaPointerFromPath(schema, path);
 		if( (!pointer) || (!pointer.hasSchema()) ) {
 			return path.join('.');
@@ -569,6 +609,30 @@ var is = require('nor-is');
 	 * @returns {object} JSON Schema for this property
 	 */
 	norUtils.getDescriptionFromPath = function get_description_from_path(schema, path) {
+		var methods;
+
+		if(schema && schema.content && schema.methods) {
+			methods = schema.methods;
+			schema = schema.content;
+		}
+
+		if(methods && methods.content) {
+			methods = methods.content;
+		}
+
+		if(!path) { throw new TypeError("!path"); }
+		path = norUtils.parsePathArray(path);
+
+		if( methods && (path.length === 1)) {
+			var key = path.join('.');
+			var method = methods.filter(function(method) {
+				return method.$name === key;
+			}).shift();
+			if(method) {
+				return method.description;
+			}
+		}
+
 		var pointer = norUtils.getSchemaPointerFromPath(schema, path);
 		if( (!pointer) || (!pointer.hasSchema()) ) {
 			return '';

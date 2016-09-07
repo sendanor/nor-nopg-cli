@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
+var NOPG_TR = process.env.NOPG_TR;
+
 var _Q = require('q');
 var debug = require('nor-debug');
 var merge = require('merge');
 var ARRAY = require('nor-array');
 var norUtils = require('./norUtils.js');
 var PATH = require('path');
+var fs = require('fs');
 var is = require('nor-is');
 var common = require('./socket/common.js');
 var uds_client = require('./socket/client.js');
@@ -39,6 +42,7 @@ function usage() {
 	process.stderr.write(
 		'USAGE: nopg COMMAND [ARG(s)] [OPT(s)]\n'+
 		' where COMMAND is one of:\n'+
+		'   connect            -- Start backend, does not create a transaction\n'+
 		'   start            -- Start backend and create transaction\n'+
 		'   TR commit        -- Commit transaction, close backend\n'+
 		'   TR rollback      -- Rollback transaction, close backend\n'+
@@ -49,6 +53,9 @@ function usage() {
 		'   TR delete [TYPE] -- Delete document(s)\n'+
 		'   TR update [TYPE] -- Update document(s)\n'+
 		'   TR create [TYPE] -- Create document(s)\n'+
+		'   TR on [EVENT] [COMMAND] -- Start listening an event and execute external COMMAND any time it happens\n'+
+		'   TR once [EVENT] [COMMAND] -- Start listening an event and execute external COMMAND one time when it happens\n'+
+		'   TR stop [LISTENER_ID] -- Stop listening an event\n'+
 		' where TR is PID of daemon handling the transaction\n'+
 		' where ARG(s) are one of:\n'+
 		'   TYPE                   -- Document type name\n'+
@@ -70,6 +77,7 @@ function usage() {
 		'   --pg=CONFIG            -- Set Postgresql settings\n'+
 		'   --array-fs=FS          -- Sets the field separator for input arrays, default value ","\n'+
 		' you can also use one of these ENVs:\n'+
+		'   NOPG_TR              -- Default PID of a daemon handling the transaction\n'+
 		'   NOPG_TIMEOUT         -- Default timeout in milliseconds for automatic rollback of transactions. Disable with 0, which is also default.\n'+
 		'   PGCONFIG             -- The PostgreSQL configuration, eg. "postgres://user:secret@localhost/dbname".\n'+
 		'   HOME                 -- User home directory, where .nopg directory for UNIX sockets is located.\n'+
@@ -149,6 +157,7 @@ function parse_argv(argv, type_obj) {
 	var verbose = false;
 	var quiet = false;
 	var batch = false;
+	var logs = false;
 	var timeout = process.env.NOPG_TIMEOUT || undefined;
 	var array_fs;
 	var where;
@@ -217,6 +226,13 @@ function parse_argv(argv, type_obj) {
 			return;
 		}
 
+		if(key === 'enable-logs') {
+			if(argv[key]) {
+				logs = true;
+			}
+			return;
+		}
+
 		if(key === 'no-timeout') {
 			timeout = undefined;
 			return;
@@ -242,6 +258,10 @@ function parse_argv(argv, type_obj) {
 		}
 	}
 
+	if(NOPG_TR && is.integer(NOPG_TR)) {
+		pids.push(NOPG_TR);
+	}
+
 	return {
 		"pids": pids,
 		"_": _,
@@ -249,6 +269,7 @@ function parse_argv(argv, type_obj) {
 		"set": unflatten(set, type_obj),
 		"traits": traits,
 		"pg": pg,
+		"logs": logs,
 		"array_fs": array_fs,
 		"verbose": verbose,
 		"timeout": timeout,
@@ -262,12 +283,15 @@ function parse_argv(argv, type_obj) {
 /** Start server in Unix Domain Socket
  * @returns {number} The pid of the started server
  */
-function start_uds() {
+function start_uds(args) {
 	return _Q.fcall(function() {
 		var spawn = require('child_process').spawn;
+		var dir = common.getLogPath();
+		var out = args.logs ? fs.openSync(PATH.join(dir, 'out.log'), 'a') : 'ignore';
+		var err = args.logs ? fs.openSync(PATH.join(dir, 'err.log'), 'a') : 'ignore';
 		var child = spawn(process.argv[0], [PATH.join(__dirname, 'uds-httpd.js')], {
 			detached: true,
-			stdio: ['ignore', 'ignore', 'ignore', 'ipc']
+			stdio: ['ignore', out, err, 'ipc']
 		});
 		var pid = child.pid;
 		var resolved = false;
@@ -290,7 +314,7 @@ function start_uds() {
 // 
 var command;
 var minimist_opts = {
-	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch', 'no-timeout', 'help', 'version'],
+	'boolean': ['q', 'quiet', 'v', 'verbose', 'b', 'batch', 'no-timeout', 'help', 'version', 'traits-typeAwareness', 'enable-logs'],
 	'string': ['pg', 'pgconfig', 'array-fs'],
 	'default': {
 		'array-fs': ','
@@ -304,7 +328,7 @@ _Q.fcall(function() {
 	return _Q.fcall(function() {
 		var pid = args.pids.shift();
 		if(!pid) {
-			return start_uds();
+			return start_uds(args);
 		}
 		return pid;
 	}).then(function(pid) {
