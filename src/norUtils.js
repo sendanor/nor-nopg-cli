@@ -591,7 +591,7 @@ var is = require('nor-is');
 				return method.$name === key;
 			}).shift();
 			if(method) {
-				return method.title;
+				return method.title || key;
 			}
 		}
 
@@ -629,7 +629,7 @@ var is = require('nor-is');
 				return method.$name === key;
 			}).shift();
 			if(method) {
-				return method.description;
+				return method.description || '';
 			}
 		}
 
